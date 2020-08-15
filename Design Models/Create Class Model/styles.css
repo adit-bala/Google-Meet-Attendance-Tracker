@@ -1,0 +1,92 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+h2 {
+    float: left;
+}
+
+[data-md-tooltip] {
+    position: relative;
+}
+
+[data-md-tooltip]:before {
+    content: attr(data-md-tooltip);
+    position: absolute;
+    left: auto;
+    right: -8px;
+    bottom: auto;
+    top: 50%;
+    padding: 8px;
+    transform: translate(100%, -50%) scale(0);
+    transform-origin: left center;
+    transition: transform 0.3s ease-in-out;
+    background: #616161e6;
+    color: white;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: Roboto, sans-serif;
+    font-weight: 400;
+}
+
+[data-md-tooltip]:hover:before {
+    transform: translate(100%, -50%) scale(1);
+}
+
+.material-icons.green {
+    color: #7fff7f;
+}
+
+.material-icons.red {
+    color: #ff7f7f;
+}
+
+.material-icons.yellow {
+    color: #ffdf00;
+}
+
+.material-icons.gray {
+    color: #CA0B00;
+}
+
+.question{
+    margin-top: 25px;
+    margin-bottom: 20px;
+}
+
+
+#top{
+    margin-top: 20px;
+}
+
+#back {
+    bottom: 50px;
+    left: 20px;
+}
+
+#my-dialog-title {
+    left: 170px;
+    
+}
+
+#my-dialog-content {
+    margin-top: -70px;
+}
+
+#bigText {
+    height: 200px;
+    width: 300px;
+}
+
+#done {
+    left: 200px;
+}
+
+#enter {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    right: 1px;
+}
+

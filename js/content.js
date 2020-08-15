@@ -120,6 +120,9 @@ const readyObserver = new MutationObserver(function (mutations, me) {
         </div>
         </div>`;
     document.getElementsByClassName("NzPR9b")[0].prepend(app);
+    document.getElementById("merge").addEventListener("click", function() {
+        chrome.runtime.sendMessage({ data: "export" })
+    })
 
     injectScript(chrome.runtime.getURL("css/style.css"), "link", "head");
     injectScript(chrome.runtime.getURL("js/script.js"), "script", "html");

@@ -1,0 +1,72 @@
+[data-md-tooltip] {
+    position: relative;
+  }
+  [data-md-tooltip]:before {
+    content: attr(data-md-tooltip);
+    position: absolute;
+    left: auto;
+    right: -8px;
+    bottom: auto;
+    top: 50%;
+    padding: 8px;
+    transform: translate(100%, -50%) scale(0);
+    transform-origin: left center;
+    transition: transform 0.3s ease-in-out;
+    background: #616161e6;
+    color: white;
+    border-radius: 2px;
+    font-size: 11px;
+    font-family: Roboto, sans-serif;
+    font-weight: 400;
+  }
+  [data-md-tooltip]:hover:before {
+    transform: translate(100%, -50%) scale(1);
+  }
+  
+  #dialog-title {
+    text-align: center;
+  }
+  
+  #back {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    padding: 0px;
+    margin: 8px 0 0 4px;
+  }
+  
+  #settings {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    padding: 0px;
+    margin: 8px 4px 0 0;
+  }
+  
+  .material-icons.green {
+    color: #228b22;
+  }
+  
+  .material-icons.red {
+    color: #DC143C;
+  }
+  
+  .material-icons.yellow {
+    color: #ffdf00;
+  }
+  
+  .material-icons.gray {
+    color: #808080;
+  }
+  
+  .mdc-dialog .mdc-dialog__content {
+    padding: 0px 0px 20px 0px;
+  }
+  
+  .mdc-list-item__graphic {
+    margin-right: 16px;
+  }
+  
+  .mdc-menu {
+    margin-left: 100px;
+  }

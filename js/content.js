@@ -15,7 +15,7 @@ function storeNames(names, expectedNames) {
         if (currentData == undefined) {
             currentData = {};
         }
-        
+
         const timestamp = ~~(Date.now() / 1000);
         for (const name of expectedNames) {
             if (currentData[name] == undefined) {
@@ -48,16 +48,21 @@ function getVisibleAttendees(container, names) {
 
 function takeAttendance() {
     const container = document.getElementsByClassName("HALYaf tmIkuc s2gQvd KKjvXb")[0];
-    const numAttendees = parseInt(document.querySelector("[jsname='EydYod']").textContent.slice(1, -1)) - 1;
+    let lastNumNames = 0;
     let names = [];
     getVisibleAttendees(container, names);
-    while (names.length < numAttendees) {
+    while (names.length !== lastNumNames) {
+        lastNumNames = names.length;
         setTimeout(function () {
             getVisibleAttendees(container, names);
         }, 100);
     }
     container.scrollTop = 0;
     storeNames(names, ['Tyler Lin', 'Aditya Balasubramanian']);
+}
+
+function getMeetCode() {
+    return document.title.substring(7);
 }
 
 function injectScript(file_path, type = "script", tag = "html") {
@@ -79,7 +84,7 @@ function injectScript(file_path, type = "script", tag = "html") {
 const peopleObserver = new MutationObserver(function (mutations, me) {
     const container = document.getElementsByClassName("HALYaf tmIkuc s2gQvd KKjvXb")[0];
     if (!container) {
-        document.getElementsByClassName("gV3Svc")[0].click();
+        document.getElementsByClassName("gV3Svc")[1].click();
         tabObserver.observe(document.getElementsByClassName("mKBhCf")[0], {
             childList: true,
             subtree: true
@@ -93,9 +98,18 @@ const peopleObserver = new MutationObserver(function (mutations, me) {
 })
 
 const tabObserver = new MutationObserver(function (mutations, me) {
-    if (document.getElementsByClassName("cS7aqe NkoVdd")[0]) {
-        takeAttendance();
+    const numAttendees = parseInt(document.querySelector("[jsname='EydYod']").textContent.slice(1, -1)) - 1;
+    const names = document.getElementsByClassName("cS7aqe NkoVdd");
+    if (numAttendees === 0) {
         me.disconnect();
+    } else {
+        if (names[1] != undefined) {
+            listObserver.observe(document.getElementsByClassName("HALYaf tmIkuc s2gQvd KKjvXb")[0], {
+                childList: true,
+                subtree: true
+            })
+            me.disconnect();
+        }
     }
 });
 
@@ -107,28 +121,41 @@ const listObserver = new MutationObserver(function (mutations, me) {
 
 const readyObserver = new MutationObserver(function (mutations, me) {
     if (document.getElementsByClassName("wnPUne N0PJ8e")[0]) {
-        const app = document.createElement("div");
-        app.setAttribute("id", "attendance");
-        app.innerHTML = `<span id="merge" aria-hidden="true"> <svg class="svg" focusable="false" width="24" height="24" viewBox="0 0 24 24" width="24">
-        <path d="M10,12c2.21,0,4-1.79,4-4c0-2.21-1.79-4-4-4S6,5.79,6,8C6,10.21,7.79,12,10,12z M10,6c1.1,0,2,0.9,2,2c0,1.1-0.9,2-2,2 S8,9.1,8,8C8,6.9,8.9,6,10,6z" />
-        <path d="M4,18c0.22-0.72,3.31-2,6-2c0-0.7,0.13-1.37,0.35-1.99C7.62,13.91,2,15.27,2,18v2h9.54c-0.52-0.58-0.93-1.25-1.19-2H4z" />
-        <path d="M19.43,18.02C19.79,17.43,20,16.74,20,16c0-2.21-1.79-4-4-4s-4,1.79-4,4c0,2.21,1.79,4,4,4c0.74,0,1.43-0.22,2.02-0.57 c0.93,0.93,1.62,1.62,2.57,2.57L22,20.59C20.5,19.09,21.21,19.79,19.43,18.02z M16,18c-1.1,0-2-0.9-2-2c0-1.1,0.9-2,2-2s2,0.9,2,2 C18,17.1,17.1,18,16,18z" /></svg> </span>
-        <div class="hover_button"> <span class="helper"> </span>
-        <div>
-            <div class="popupCloseButton">&times; </div>
-            <p>HELP ME HARVEY</p>
+        const bar = document.getElementsByClassName("NzPR9b")[0];
+        bar.insertAdjacentHTML('afterbegin',
+            `<div id="attendance" jsshadow="" role="button" class="uArJ5e UQuaGc kCyAyd kW31ib foXzLb IeuGXd M9Bg4d" jscontroller="VXdfxd" mousedown:UX7yZ; mouseup:lbsD7e; mouseenter:tfO1Yc; mouseleave:JywGue;touchstart:p6p2H; touchmove:FwuNnf; touchend:yfqBxc(preventMouseEvents=true|preventDefault=true); touchcancel:JMtRjd;focus:AHmuwe; blur:O22p3e; contextmenu:mg9Pef" jsname="VyLmyb" aria-label="Show everyone" aria-disabled="false" tabindex="0" data-tooltip="Show everyone" aria-expanded="true" data-tab-id="1" data-tooltip-vertical-offset="-12" data-tooltip-horizontal-offset="0">
+            <div class="Fvio9d MbhUzd" jsname="ksKsZd" style="top: 24px; left: 36px; width: 72px; height: 72px;"></div>
+            <div class="e19J0b CeoRYc"></div>
+            <span jsslot="" class="l4V7wb Fxmcue">
+                <span class="NPEfkd RveJvd snByac">
+                    <div class="ZaI3hb">
+                        <div class="gV3Svc">
+                            <span class="DPvwYc sm8sCf azXnTb" aria-hidden="true">
+                                <svg focusable="false" width="24" height="24" viewBox="0 0 24 24" class="Hdh4hc cIGbvc NMm5M">
+                                    <path d="M16.59 7.58L10 14.17l-3.59-3.58L5 12l5 5 8-8zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                </span>
+            </span>
         </div>
-        </div>`;
-    document.getElementsByClassName("NzPR9b")[0].prepend(app);
-    document.getElementById("merge").addEventListener("click", function() {
-        chrome.runtime.sendMessage({ data: "export" })
-    })
+        <div class="qO3Z3c"></div>`)
 
-    injectScript(chrome.runtime.getURL("css/style.css"), "link", "head");
-    injectScript(chrome.runtime.getURL("js/script.js"), "script", "html");
+        injectScript(chrome.runtime.getURL("css/style.css"), "link", "head");
+        injectScript(chrome.runtime.getURL("js/script.js"), "script", "html");
         peopleObserver.observe(document.getElementsByClassName("wnPUne N0PJ8e")[0], {
             childList: true,
         });
+
+        document.getElementById("attendance").addEventListener("click", function () {
+            chrome.runtime.sendMessage(
+                {
+                    data: "export",
+                    code: getMeetCode()
+                }
+            )
+        })
 
         me.disconnect();
     }

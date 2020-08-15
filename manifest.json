@@ -2,6 +2,10 @@
   "name": "Meet Yeet",
   "version": "1.0",
   "description": "Records Google Meet attendance",
+  "web_accessible_resources": [
+    "content.js",
+    "style.css"
+  ],
   "content_scripts": [
     {
       "matches": [

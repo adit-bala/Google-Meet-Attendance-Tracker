@@ -1,17 +1,16 @@
-
-  "manifest_version": 2,
-
-  "name": "Hello World Demo",
-  "description": "A hello world extension!",
+{
+  "name": "Meet Yeet",
   "version": "1.0",
-  "icons": {
-    "128": "icon128.png",
-    "48": "icon48.png",
-    "16": "icon16.png"
-  },
-
-  "browser_action": {
-    "default_icon": "icon16.png",
-    "default_popup": "popup.html"
-  }
+  "description": "Records Google Meet attendance",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://meet.google.com/**-**-**"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "manifest_version": 2
 }

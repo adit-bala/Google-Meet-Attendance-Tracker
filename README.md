@@ -1,2 +1,2 @@
-# Google-Meet-Attendance-Tracker
+# meeteth-yeeteth
 Attendance tracker for Google Meet

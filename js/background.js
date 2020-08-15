@@ -1,24 +1,25 @@
 chrome.runtime.onMessage.addListener(function (message, callback) {
     if (message.data == "export") {
         chrome.identity.getAuthToken({ interactive: true }, function (token) {
-            chrome.storage.local.get("spreadsheet-id", function (result) {
-                id = result["spreadsheet-id"];
-                code = message.code;
+            chrome.storage.local.get(["spreadsheet-id", "class"], function (result) {
+                const id = result["spreadsheet-id"];
+                const code = message.code;
+                const className = result.class;
                 console.log("Meet code: " + code);
                 if (id == undefined) {
-                    createSpreadsheet(token, code);
+                    createSpreadsheet(token, className, code);
                 } else {
-                    updateSpreadsheet(token, code, id);
+                    updateSpreadsheet(token, className, code, id);
                 }
             })
         });
     }
 });
 
-function createSpreadsheet(token, code) {
+function createSpreadsheet(token, className, code) {
     const body = {
         "properties": {
-            "title": "Attendance"
+            "title": "Attendance for Google Meet"
         }
     };
     const init = {
@@ -31,41 +32,24 @@ function createSpreadsheet(token, code) {
         body: JSON.stringify(body)
     };
     let spreadsheetId = null;
+    let requests = [];
+    console.log("Creating new attendance spreadsheet...");
     fetch(
         'https://sheets.googleapis.com/v4/spreadsheets',
         init)
         .then((response) => response.json())
         .then(function (data) {
             console.log(`Successfully created Attendance spreadsheet with id ${data.spreadsheetId}.`);
-            console.log(data);
             chrome.storage.local.set({ "spreadsheet-id": data.spreadsheetId });
             spreadsheetId = data.spreadsheetId;
 
-            return createUpdateCellsRequest(code, 0);
+            requests.push(createUpdateSheetPropertiesRequest(className, 0));
+            requests.push(createHeadersRequest(0));
+            return createFirstAppendCellsRequest(code, 0);
         })
-        .then(function (updateCellsRequest) {
-            const requests = [
-                {
-                    "updateSheetProperties": {
-                        "properties": {
-                            "sheetId": 0,
-                            "title": code,
-                            "gridProperties": {
-                                "rowCount": 100,
-                                "columnCount": 100,
-                                "frozenRowCount": 2
-                            }
-                        },
-                        "fields": "*"
-                    },
-                },
-                {
-                    "updateCells": updateCellsRequest.updateCells,
-                },
-                {
-                    "mergeCells": updateCellsRequest.mergeCells
-                }
-            ];
+        .then(function (reqs) {
+            requests.push(reqs[0]);
+            requests.push(reqs[1]);
             return batchUpdate(token, requests, spreadsheetId);
         })
         .then(function (data) {
@@ -74,44 +58,34 @@ function createSpreadsheet(token, code) {
         })
 }
 
-function updateSpreadsheet(token, code, spreadsheetId) {
+function updateSpreadsheet(token, className, code, spreadsheetId) {
+    let requests = [];
     let sheetId = null;
     let newSheet = false;
-    getMeetCodesArray(token, spreadsheetId)
-        .then(function (array) {
-            sheetId = array.indexOf(code);
-            if (sheetId === -1) {
-                sheetId = array.length;
+    console.log("Updating spreadsheet...");
+    getSheetIdOfClass(token, className, spreadsheetId)
+        .then(function (info) {
+            sheetId = info[1];
+            if (!info[0]) {
+                requests.push(createAddSheetRequest(className, sheetId));
+                console.log(`Creating new sheet for class ${className}, ID ${sheetId}`);
+                requests.push(createHeadersRequest(sheetId));
                 newSheet = true;
-                console.log(`Creating new sheet with ID ${sheetId} (code ${code})`);
-            } else {
-                console.log(`Updating sheet with ID ${sheetId} (code ${code})`)
             }
-            return createUpdateCellsRequest(code, sheetId);
+            return getMeta(code);
         })
-        .then(function (updateCellsRequest) {
-            let requests = [
-                {
-                    "updateCells": updateCellsRequest.updateCells,
+        .then(function (meta) {
+            if (meta == undefined) {
+                if (newSheet) {
+                    return createFirstAppendCellsRequest(code, sheetId);
                 }
-            ]
-            if (newSheet) {
-                requests.unshift({
-                    "addSheet": {
-                        "properties": {
-                            "sheetId": sheetId,
-                            "title": code,
-                            "gridProperties": {
-                                "rowCount": 100,
-                                "columnCount": 100,
-                                "frozenRowCount": 2
-                            }
-                        }
-                    }
-                });
-                requests.push({
-                    "mergeCells": updateCellsRequest.mergeCells
-                })
+                return createAppendCellsRequest(token, code, spreadsheetId, sheetId);
+            }
+            return createUpdateCellsRequest(code, sheetId, meta.startRow)
+        })
+        .then(function (reqs) {
+            for (const request of reqs) {
+                requests.push(request);
             }
             return batchUpdate(token, requests, spreadsheetId);
         })
@@ -121,19 +95,172 @@ function updateSpreadsheet(token, code, spreadsheetId) {
         })
 }
 
-function createUpdateCellsRequest(code, sheetId) {
+function createUpdateSheetPropertiesRequest(className, sheetId) {
+    const request =
+    {
+        "updateSheetProperties": {
+            "properties": {
+                "sheetId": sheetId,
+                "title": className,
+                "gridProperties": {
+                    "rowCount": 2,
+                    "columnCount": 6,
+                    "frozenRowCount": 1
+                }
+            },
+            "fields": "*"
+        }
+    };
+    return request;
+}
+
+function createAddSheetRequest(className, sheetId) {
+    const request =
+    {
+        "addSheet": {
+            "properties": {
+                "sheetId": sheetId,
+                "title": className,
+                "gridProperties": {
+                    "rowCount": 2,
+                    "columnCount": 6,
+                    "frozenRowCount": 1
+                }
+            }
+        }
+    };
+    return request;
+}
+
+function createHeadersRequest(sheetId) {
+    let headers = ["Name", "Present", "Time In", "Time Out", "# of Joins", "Mins. Present"];
+    const request = {
+        "updateCells": {
+            "rows": {
+                "values": headers.map(function (header) {
+                    return {
+                        "userEnteredValue": {
+                            "stringValue": header
+                        },
+                        "userEnteredFormat": {
+                            "textFormat": {
+                                "bold": true,
+                            }
+                        }
+                    }
+                })
+            },
+            "fields": "*",
+            "start": {
+                "sheetId": sheetId,
+                "rowIndex": 0,
+                "columnIndex": 0
+            }
+        },
+    };
+    return request;
+}
+
+function createAppendCellsRequest(token, code, spreadsheetId, sheetId) {
     sheetId = parseInt(sheetId);
     return new Promise(resolve => {
-        chrome.storage.local.get("attendance", function (result) {
+        let numRows = null;
+        getNumRows(token, spreadsheetId, sheetId)
+            .then(function (rows) {
+                numRows = rows;
+                return generateAttendanceRows(code, numRows);
+            })
+            .then(function (rowData) {
+                const requests = [
+                    {
+                        "appendCells": {
+                            "sheetId": sheetId,
+                            "rows": rowData,
+                            "fields": "*"
+                        }
+                    },
+                    {
+                        "mergeCells": {
+                            "range": {
+                                "sheetId": sheetId,
+                                "startRowIndex": numRows,
+                                "endRowIndex": numRows + 1,
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 6
+                            },
+                            "mergeType": 'MERGE_ALL'
+                        }
+                    }
+                ]
+                resolve(requests);
+            })
+    })
+}
+
+function createFirstAppendCellsRequest(code, sheetId) {
+    sheetId = parseInt(sheetId);
+    return new Promise(resolve => {
+        generateAttendanceRows(code, 1)
+            .then(function (rowData) {
+                const requests = [
+                    {
+                        "appendCells": {
+                            "sheetId": sheetId,
+                            "rows": rowData,
+                            "fields": "*"
+                        }
+                    },
+                    {
+                        "mergeCells": {
+                            "range": {
+                                "sheetId": sheetId,
+                                "startRowIndex": 1,
+                                "endRowIndex": 2,
+                                "startColumnIndex": 0,
+                                "endColumnIndex": 6
+                            },
+                            "mergeType": 'MERGE_ALL'
+                        }
+                    }
+                ]
+                resolve(requests);
+            })
+    })
+}
+
+function createUpdateCellsRequest(code, sheetId, startRow) {
+    sheetId = parseInt(sheetId);
+    return new Promise(resolve => {
+        generateAttendanceRows(code)
+            .then(function (rowData) {
+                const requests = [
+                    {
+                        "updateCells": {
+                            "rows": rowData,
+                            "fields": "*",
+                            "start": {
+                                "sheetId": sheetId,
+                                "rowIndex": startRow,
+                                "columnIndex": 0
+                            }
+                        }
+                    }]
+                resolve(requests);
+            })
+    })
+}
+
+function generateAttendanceRows(code, startRow = undefined) {
+    return new Promise(resolve => {
+        chrome.storage.local.get(code, function (result) {
             const unix = ~~(Date.now() / 1000);
-            const rawData = result.attendance;
-            let headers = ["Name", "Present", "Time In", "Time Out", "# of Joins", "Mins. Present"];
+            const rawData = result[code].attendance;
             let rowData = [
                 {
                     "values": [
                         {
                             "userEnteredValue": {
-                                "stringValue": `Attendance for meet ${code} — Recorded ${dateTimeString(unix)}`
+                                "stringValue": `${code} — ${dateTimeString(unix)}`
                             },
                             "userEnteredFormat": {
                                 "horizontalAlignment": 'CENTER',
@@ -144,27 +271,13 @@ function createUpdateCellsRequest(code, sheetId) {
                         }
                     ]
                 },
-                {
-                    "values": headers.map(function (header) {
-                        return {
-                            "userEnteredValue": {
-                                "stringValue": header
-                            },
-                            "userEnteredFormat": {
-                                "textFormat": {
-                                    "bold": true,
-                                }
-                            }
-                        }
-                    })
-                }
             ];
             for (const name in rawData) {
-                let present = "", timeIn = "", timeOut = "", joins = 0, minsPresent = 0;
+                let present = "N", timeIn = "", timeOut = "", joins = 0, minsPresent = 0;
                 const timestamps = rawData[name];
                 const l = timestamps.length;
                 if (l > 0) {
-                    present = "✓";
+                    present = "Y";
                     timeIn = toTimeString(timestamps[0]);
                     timeOut = toTimeString(timestamps[l - 1]);
                     joins = Math.ceil(l / 2);
@@ -192,8 +305,8 @@ function createUpdateCellsRequest(code, sheetId) {
                             },
                             "userEnteredFormat": {
                                 "backgroundColor": {
-                                    "red": present === "" ? 1 : 0.5,
-                                    "green": present === "" ? 0.5 : 1,
+                                    "red": present === "N" ? 1 : 0.5,
+                                    "green": present === "N" ? 0.5 : 1,
                                     "blue": 0.5,
                                     "alpha": 1
                                 },
@@ -225,35 +338,97 @@ function createUpdateCellsRequest(code, sheetId) {
                     ]
                 })
             }
-            const request =
-            {
-                "updateCells": {
-                    "rows": rowData,
-                    "fields": "*",
-                    "start": {
-                        "sheetId": sheetId,
-                        "rowIndex": 0,
-                        "columnIndex": 0
+            rowData.push({
+                "values": [
+                    {
+                        "userEnteredValue": {
+                            "stringValue": ""
+                        }
                     }
-                },
-                "mergeCells": {
-                    "range": {
-                        "sheetId": sheetId,
-                        "startRowIndex": 0,
-                        "endRowIndex": 1,
-                        "startColumnIndex": 0,
-                        "endColumnIndex": 6
-                    },
-                    "mergeType": 'MERGE_ALL'
-                }
+                ]
+            })
+
+            if (startRow != undefined) {
+                result[code].meta = {
+                    "startRow": startRow,
+                    "endRow": startRow + rowData.length
+                };
+                chrome.storage.local.set({ [code]: result[code] });
             }
-            resolve(request);
+
+            resolve(rowData);
+        })
+    })
+}
+
+function getSheetIdOfClass(token, className, spreadsheetId) {
+    console.log(`Fetching sheet ID of class ${className}...`)
+    return new Promise(resolve => {
+        const init = {
+            method: 'GET',
+            async: true,
+            headers: {
+                Authorization: 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        };
+        fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+            init)
+            .then((response) => response.json())
+            .then(function (data) {
+                for (const sheet of data.sheets) {
+                    if (sheet.properties.title === className) {
+                        resolve([true, sheet.properties.sheetId]);
+                    }
+                }
+                resolve([false, data.sheets.length]);
+            })
+    })
+}
+
+function getNumRows(token, spreadsheetId, sheetId) {
+    console.log(`Getting number of rows in sheet ID ${sheetId}...`)
+    return new Promise(resolve => {
+        const body = {
+            "dataFilters": {
+                "gridRange": {
+                    "sheetId": sheetId
+                }
+            },
+            "includeGridData": true
+        }
+        const init = {
+            method: 'POST',
+            async: true,
+            headers: {
+                Authorization: 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        };
+        fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:getByDataFilter`,
+            init)
+            .then((response) => response.json())
+            .then(function (data) {
+                console.log(data);
+                resolve(data.sheets[0].properties.gridProperties.rowCount);
+            })
+    })
+}
+
+function getMeta(code) {
+    return new Promise(resolve => {
+        chrome.storage.local.get(code, function (result) {
+            resolve(result[code].meta);
         })
     })
 }
 
 function batchUpdate(token, requests, spreadsheetId) {
     console.log("Executing batch update...");
+    console.log(requests);
     return new Promise(resolve => {
         const body = {
             "requests": requests,
@@ -276,27 +451,6 @@ function batchUpdate(token, requests, spreadsheetId) {
                 resolve(data);
             });
     })
-}
-
-function getMeetCodesArray(token, spreadsheetId) {
-    return new Promise(resolve => {
-        const init = {
-            method: 'GET',
-            async: true,
-            headers: {
-                Authorization: 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            },
-        };
-        fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
-            init)
-            .then((response) => response.json())
-            .then(function (data) {
-                resolve(data.sheets.map(sheet => sheet.properties.title));
-            })
-    })
-
 }
 
 function dateTimeString(timestamp) {

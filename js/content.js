@@ -1,7 +1,8 @@
 const expectedNames = ["Aditya Balasubramanian", "Tyler Lin"];
 
 function storeNames(names, expectedNames) {
-    chrome.storage.local.get("attendance", function (result) {
+    const code = getMeetCode();
+    chrome.storage.local.get(code, function (result) {
         // let currentData = result.attendance;
         // let newEntry = {};
         // for (const name of expectedNames) {
@@ -11,12 +12,17 @@ function storeNames(names, expectedNames) {
         // currentData[timestamp] = newEntry;
         // chrome.storage.local.set({ 'attendance': currentData });
 
-        let currentData = result.attendance;
-        if (currentData == undefined) {
-            currentData = {};
+        let res = result[code];
+        if (res == undefined) {
+            res = {
+                "attendance": {},
+                "class": "Period 1"
+            };
         }
+        let currentData = res.attendance;
 
         const timestamp = ~~(Date.now() / 1000);
+        res.timestamp = timestamp;
         for (const name of expectedNames) {
             if (currentData[name] == undefined) {
                 currentData[name] = [];
@@ -31,7 +37,7 @@ function storeNames(names, expectedNames) {
                 }
             }
         }
-        chrome.storage.local.set({ "attendance": currentData });
+        chrome.storage.local.set({ [code]: res });
     })
 }
 
@@ -101,6 +107,7 @@ const tabObserver = new MutationObserver(function (mutations, me) {
     const numAttendees = parseInt(document.querySelector("[jsname='EydYod']").textContent.slice(1, -1)) - 1;
     const names = document.getElementsByClassName("cS7aqe NkoVdd");
     if (numAttendees === 0) {
+        takeAttendance();
         me.disconnect();
     } else {
         if (names[1] != undefined) {
@@ -152,7 +159,7 @@ const readyObserver = new MutationObserver(function (mutations, me) {
             chrome.runtime.sendMessage(
                 {
                     data: "export",
-                    code: getMeetCode()
+                    code: getMeetCode(),
                 }
             )
         })

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Select Class</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+</head>
+
+<body>
+  <div class="mdc-touch-target-wrapper">
+    <button class="mdc-button mdc-button--touch" onclick="openDialog()">
+      <div class="mdc-button__ripple"></div>
+      <span class="mdc-button__label">Open</span>
+      <div class="mdc-button__touch"></div>
+    </button>
+  </div>
+
+  <div class="mdc-dialog">
+    <div class="mdc-dialog__container">
+      <div class="mdc-dialog__surface" role="dialog" aria-modal="true" aria-labelledby="dialog-title"
+        aria-describedby="my-dialog-content">
+        <div id="dialog-title">
+          <h2 class="mdc-dialog__title top" id="dialog-title">Select class</h2>
+          <button class="mdc-icon-button material-icons top" id="help">help_outline</button>
+        </div>
+        <div class="mdc-dialog__content">
+          <ul class="mdc-list">
+            <li class="mdc-list-item">
+              <span class="mdc-list-item__graphic material-icons">
+                perm_identity
+              </span>
+              <span class="mdc-list-item__text">
+                Pd 1 Math
+              </span>
+              <div class="mdc-list-item__meta mdc-menu-surface--anchor">
+                <button class="mdc-icon-button material-icons" role="button" aria-haspopup="menu"
+                  aria-label="Select class options" onclick="openMenu(0)">
+                  more_vert
+                </button>
+                <div class="mdc-menu mdc-menu-surface" role="menu" tabindex="-1">
+                  <ul class="mdc-list" role="menu" aria-orientation="vertical">
+                    <li class="mdc-list-item mdc-ripple-surface" role="menuitem" tabindex="-1">
+                      <span class="mdc-list-item__text">Edit</span>
+                    </li>
+                    <li class="mdc-list-item mdc-ripple-surface" role="menuitem" tabindex="-1">
+                      <span class="mdc-list-item__text">Delete</span>
+                    </li>
+                  </ul>
+                </div>
+            </li>
+            <li class="mdc-list-item">
+              <span class="mdc-list-item__graphic material-icons">
+                perm_identity
+              </span>
+              <span class="mdc-list-item__text">
+                Pd 3 English
+              </span>
+              <div class="mdc-list-item__meta mdc-menu-surface--anchor">
+                <button class="mdc-icon-button material-icons" onclick="openMenu(1)">
+                  more_vert
+                </button>
+                <div class="mdc-menu mdc-menu-surface" role="menu" tabindex="-1">
+                  <ul class="mdc-list" role="menu" aria-orientation="vertical">
+                    <li class="mdc-list-item mdc-ripple-surface" role="menuitem" tabindex="-1">
+                      <span class="mdc-list-item__text">Edit</span>
+                    </li>
+                    <li class="mdc-list-item mdc-ripple-surface" role="menuitem" tabindex="-1">
+                      <span class="mdc-list-item__text">Delete</span>
+                    </li>
+                  </ul>
+                </div>
+            </li>
+            <li class="mdc-list-item">
+              <span class="mdc-list-item__graphic material-icons">
+                add
+              </span>
+              <span class="mdc-list-item__text">
+                Add Class
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="mdc-dialog__scrim"></div>
+  </div>
+  <script src="script.js"></script>
+</body>
+
+</html>

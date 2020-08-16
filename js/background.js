@@ -1,4 +1,12 @@
 chrome.runtime.onMessage.addListener(function (message, callback) {
+    if (message.data == 'mdc') {
+        chrome.tabs.executeScript({
+            file: 'js/mdc.js',
+        })
+    }
+})
+
+chrome.runtime.onMessage.addListener(function (message, callback) {
     if (message.data == 'export') {
         const code = message.code
         chrome.identity.getAuthToken({ interactive: true }, function (token) {

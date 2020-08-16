@@ -25,3 +25,15 @@ function toTimeString(timestamp) {
         timeStyle: 'short',
     }).format(new Date(timestamp * 1000))
 }
+
+function compare(a, b) {
+    var aName = a.split(' ')
+    var bName = b.split(' ')
+
+    var aLastName = aName[aName.length - 1]
+    var bLastName = bName[bName.length - 1]
+
+    if (aLastName < bLastName) return -1
+    if (aLastName > bLastName) return 1
+    return 0
+}

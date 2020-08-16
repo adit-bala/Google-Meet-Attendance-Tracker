@@ -44,11 +44,15 @@
 
 #dialog-title {
     text-align: center;
+    top: -4px;
+    max-width: none;
+    font-size: 20px;
 }
 
 #card-title {
     text-align: center;
     margin: 12px;
+    max-width: none;
     font-size: 20px;
 }
 
@@ -67,15 +71,23 @@
     padding: 0px;
 }
 
-.dialog-button {
-    margin: 8px 8px 0 8px;
+.big-button {
+    margin: 4px 8px 0 4px;
 }
 
-.card-button {
+.medium-button {
+    margin: 8px 10px 0 10px;
     width: 32px;
     height: 32px;
     font-size: 20px;
-    margin: 8px 10px 0 10px;
+}
+
+.small-button {
+    margin: 0 0 8px 0;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    font-size: 18px;
 }
 
 .material-icons.green {
@@ -98,6 +110,10 @@
     padding: 0px;
 }
 
+.mdc-dialog .mdc-dialog__surface {
+    max-width: none;
+}
+
 .mdc-list {
     padding: 0px;
 }
@@ -106,8 +122,18 @@
     padding-right: 8px;
 }
 
+.class-entry {
+    max-width: 600px;
+    font-family: 'Google Sans', Roboto, Arial, sans-serif;
+    z-index: 1;
+}
+
 #class-list {
     padding-bottom: 0;
+}
+
+.mdc-button {
+    font-family: 'Google Sans', Roboto, Arial, sans-serif;
 }
 
 #add-class {
@@ -126,10 +152,73 @@
     color: #00796b;
 }
 
+#edit-roster {
+    width: 100%;
+}
+
+.confirm-roster {
+    width: 100%;
+}
+
 .mdc-list-item__graphic {
     margin-right: 16px;
 }
 
-.mdc-linear-progress {
-    width: 80%;
+.export-button {
+    margin: 0 auto;
+}
+
+:root {
+    --text-offset: -10px;
+}
+
+.label {
+    margin: 8px 16px 0 16px;
+    font-weight: 500 !important;
+    font-size: 1rem !important;
+}
+
+.class-name-field {
+    margin: 4px 16px 0 16px;
+}
+
+.mdc-text-field--textarea {
+    width: calc(100% - 32px);
+    max-width: 69vw;
+    margin: 4px 16px 0 16px !important;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+.mdc-text-field--textarea .mdc-text-field__input {
+    line-height: 40px;
+    font-size: 16px;
+    font-family: Consolas, 'Liberation Mono', Menlo, Courier,
+        monospace;
+    letter-spacing: normal;
+    margin-top: 6px !important;
+    margin-bottom: 6px !important;
+}
+
+.mdc-chip-set {
+    max-width: 100%;
+    width: calc(100% - 18px);
+    position: absolute;
+}
+
+.mdc-chip {
+    padding-left: 9px;
+    padding-right: 9px;
+    z-index: 1;
+}
+
+.mdc-chip__text {
+    font-size: 16px;
+    font-family: Consolas, 'Liberation Mono', Menlo, Courier,
+        monospace;
+    letter-spacing: normal;
+}
+
+.mdc-notched-outline {
+    z-index: 2;
 }

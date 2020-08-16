@@ -1,22 +1,12 @@
 function storeNames(names) {
     const code = getMeetCode()
     chrome.storage.local.get(null, function (result) {
-        // let currentData = result.attendance;
-        // let newEntry = {};
-        // for (const name of expectedNames) {
-        //     newEntry[name] = names.includes(name);
-        // }
-        // const timestamp = ~~(Date.now() / 1000);
-        // currentData[timestamp] = newEntry;
-        // chrome.storage.local.set({ 'attendance': currentData });
-
         const timestamp = ~~(Date.now() / 1000)
 
         let res = result[code]
         if (res == undefined) {
             res = {
                 attendance: {},
-                class: 'Period 1',
                 'start-timestamp': timestamp,
             }
         }
@@ -47,6 +37,11 @@ function storeNames(names) {
             }
         }
 
+        const className = res.class
+        if (className) {
+            updateRosterStatus(currentData, result.rosters[className])
+        }
+
         chrome.storage.local.set({ [code]: res })
 
         for (const key in result) {
@@ -60,11 +55,97 @@ function storeNames(names) {
     })
 }
 
+function updateRosterStatus(attendance, roster) {
+    const rosterStatus = document.getElementById('roster-status')
+    rosterStatus.innerHTML = ''
+    for (const name in attendance) {
+        const arr = attendance[name]
+        if (roster.includes(name)) {
+            if (arr.length % 2 === 1) {
+                var color = 'green'
+                var tooltip = 'Present'
+                var icon = 'check_circle'
+                var text = `Joined at ${toTimeString(arr[0])}`
+            } else {
+                color = 'yellow'
+                tooltip = 'Previously Present'
+                icon = 'watch_later'
+                text = `Last seen at ${toTimeString(arr[arr.length - 1])}`
+            }
+        } else {
+            color = 'gray'
+            tooltip = 'Not on List'
+            icon = 'error'
+            text = `Joined at ${toTimeString(arr[0])}`
+        }
+        
+        rosterStatus.insertAdjacentHTML('beforeend', `
+        <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
+            <span
+                class="mdc-list-item__graphic material-icons ${color}"
+                jscontroller="VXdfxd"
+                jsaction="mouseenter:tfO1Yc; mouseleave:JywGue;"
+                tabindex="0"
+                aria-label="${tooltip}"
+                data-tooltip="${tooltip}"
+                data-tooltip-vertical-offset="-12"
+                data-tooltip-horizontal-offset="0"
+            >
+                ${icon}
+            </span>
+
+            <span class="mdc-list-item__text">
+                <span class="mdc-list-item__primary-text">
+                    ${name}
+                </span>
+                <span class="mdc-list-item__secondary-text">
+                    ${text}
+                </span>
+            </span>
+        </li>
+        <li class="mdc-list-divider" role="separator"></li>`)
+    }
+    for (const name of roster) {
+        if (!attendance.hasOwnProperty(name)) {
+            rosterStatus.insertAdjacentHTML('beforeend', `
+            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
+                <span
+                    class="mdc-list-item__graphic material-icons red"
+                    jscontroller="VXdfxd"
+                    jsaction="mouseenter:tfO1Yc; mouseleave:JywGue;"
+                    tabindex="0"
+                    aria-label="Absent"
+                    data-tooltip="Absent"
+                    data-tooltip-vertical-offset="-12"
+                    data-tooltip-horizontal-offset="0"
+                >
+                    cancel
+                </span>
+
+                <span class="mdc-list-item__text">
+                    <span class="mdc-list-item__primary-text">
+                        ${name}
+                    </span>
+                    <span class="mdc-list-item__secondary-text">
+                        Not here
+                    </span>
+                </span>
+            </li>
+            <li class="mdc-list-divider" role="separator"></li>`)
+            }
+    }
+}
+
 function getVisibleAttendees(container, names) {
     const labels = document.getElementsByClassName('cS7aqe NkoVdd')
     for (const label of labels) {
         const name = label.innerHTML
-        if (!names.includes(name) && name.slice(-6) !== ' (You)') {
+        if (
+            !names.includes(name) &&
+            !name.endsWith(' (You)') &&
+            !name.endsWith(' (Your Presentation)') &&
+            !name.endsWith(' (Presentation)')
+        ) {
             names.push(name)
         }
     }
@@ -105,6 +186,102 @@ function hideCard() {
     const attendanceButton = document.getElementById('attendance')
     attendanceButton.classList.add('IeuGXd')
     document.getElementById('card').style.visibility = 'hidden'
+}
+
+function getClassHTML(className) {
+    return `<li
+        class="mdc-list-item mdc-list-item--class"
+        role="option"
+        tabindex="0"
+    >
+        <span class="mdc-list-item__ripple"></span>
+        <span
+            class="mdc-list-item__graphic material-icons"
+        >
+            perm_identity
+        </span>
+        <span class="mdc-list-item__text class-entry">
+            ${className}
+        </span>
+        <div class="mdc-list-item__meta">
+            <button
+                class="mdc-icon-button material-icons edit-class"
+                aria-label="Edit class"
+            >
+                edit
+            </button>
+            <button
+                class="mdc-icon-button material-icons delete-class"
+                aria-haspopup="menu"
+                aria-label="Delete class"
+            >
+                delete
+            </button>
+        </div>
+    </li>`
+}
+
+function initializeClasses() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get('rosters', function (result) {
+            let res = result['rosters']
+            if (res == undefined) {
+                res = {}
+                chrome.storage.local.set({ rosters: res })
+            }
+
+            const classList = document.getElementById('class-list')
+            let classes = []
+            for (const className in res) {
+                classList.insertAdjacentHTML(
+                    'beforeend',
+                    getClassHTML(className)
+                )
+                const classEl = classList.lastChild
+                classEl.name = className
+                classEl.roster = res[className]
+                classes.push(classEl)
+            }
+            resolve(classes)
+        })
+    })
+}
+
+function addClass(className, roster) {
+    return new Promise((resolve) => {
+        chrome.storage.local.get('rosters', function (result) {
+            let res = result['rosters']
+            res[className] = roster
+            chrome.storage.local.set({ rosters: res })
+
+            const classList = document.getElementById('class-list')
+            classList.insertAdjacentHTML('beforeend', getClassHTML(className))
+            const classEl = classList.lastChild
+            classEl.name = className
+            classEl.roster = res[className]
+
+            resolve(classEl)
+        })
+    })
+}
+
+function deleteClass(className) {
+    return new Promise((resolve) => {
+        chrome.storage.local.get('rosters', function (result) {
+            let res = result['rosters']
+            delete res[className]
+            chrome.storage.local.set({ rosters: res })
+
+            const classList = document.getElementById('class-list')
+            const classEls = classList.getElementsByTagName('li')
+            for (const classEl of classEls) {
+                if (classEl.name === className) {
+                    classList.removeChild(classEl)
+                }
+            }
+            resolve()
+        })
+    })
 }
 
 const peopleObserver = new MutationObserver(function (mutations, me) {
@@ -175,7 +352,6 @@ const trayObserver = new MutationObserver(function (mutations, me) {
         const trayWidth = tray.offsetWidth
         document.getElementById('card').style.width = trayWidth + 'px'
     }
-    me.disconnect()
 })
 
 const readyObserver = new MutationObserver(function (mutations, me) {
@@ -193,9 +369,9 @@ const readyObserver = new MutationObserver(function (mutations, me) {
         const screen = document.getElementsByClassName('crqnQb')[0]
         screen.insertAdjacentHTML('afterbegin', cardHTML)
 
-        document
-            .getElementById('close-card')
-            .addEventListener('click', hideCard)
+        for (const closeButton of document.getElementsByClassName('close-card')) {
+            closeButton.addEventListener('click', hideCard)
+        }
 
         for (let i = 1; i <= 2; i++) {
             document
@@ -229,18 +405,16 @@ const readyObserver = new MutationObserver(function (mutations, me) {
         )
         showEveryone.classList.remove('IeuGXd')
 
+        me.disconnect()
         chrome.runtime.sendMessage({
             data: 'mdc',
         })
-
         peopleObserver.observe(
             document.getElementsByClassName('wnPUne N0PJ8e')[0],
             {
                 childList: true,
             }
         )
-
-        me.disconnect()
     }
 })
 
@@ -257,382 +431,38 @@ const cardHTML = `<div class="mdc-card" id="card" style="
     width: 304px;
     border-radius: 0 0 0 8px;
     ">
-    <div class="mdc-card-header">
-        <button
-            class="mdc-icon-button card-button material-icons left"
-            aria-label="Change class"
-        >
-            arrow_back
-        </button>
-        <h2 id="card-title">
-            Period 1 Math
-        </h2>
-        <div class="mdc-menu-surface--anchor right" style="right: 42px;">
-            <div class="mdc-menu mdc-menu-surface" role="menu">
-                <ul class="mdc-list" id="sort-options">
-                    <li
-                        class="mdc-list-item mdc-ripple-surface"
-                        role="menuitem"
-                        tabindex="0"
-                    >
-                        <span class="mdc-list-item__text"
-                            >Sort by Last Name (A - Z)</span
-                        >
-                    </li>
-                    <li
-                        class="mdc-list-item mdc-ripple-surface"
-                        role="menuitem"
-                        tabindex="0"
-                    >
-                        <span class="mdc-list-item__text"
-                            >Sort by Absences</span
-                        >
-                    </li>
-                </ul>
+    <div hidden id="card-class-view">
+        <div class="mdc-card-header">
+            <div>
+                <h2 class="CkXZgc" id="card-title">
+                    Select Class
+                </h2>
             </div>
+            <button
+                class="mdc-icon-button medium-button material-icons right close-card"
+                aria-label="Exit attendance dialog"
+            >
+                close
+            </button>
         </div>
-        <button
-            class="mdc-icon-button card-button material-icons more right"
-            style="right: 34px;"
-            aria-haspopup="menu"
-            aria-label="Sort options"
-        >
-            settings
-        </button>
-        <button
-            class="mdc-icon-button card-button material-icons right" id="close-card"
-            aria-label="Exit attendance dialog"
-        >
-            close
-        </button>
-    </div>
-    <div class="mdc-list-divider" role="separator"></div>
-    <div class="mdc-card-content" style="
-    max-height: 60vh; overflow: scroll;">
-        <ul class="mdc-list mdc-list--dense mdc-list--two-line">
-            <li class="mdc-list-item mdc-ripple-surface">
-                <span
-                    class="mdc-list-item__graphic material-icons green"
-                    jscontroller="VXdfxd"
-                    jsaction="mouseenter:tfO1Yc; mouseleave:JywGue;"
-                    tabindex="0"
-                    aria-label="Present Now"
-                    data-tooltip="Present Now"
-                    data-tooltip-vertical-offset="-12"
-                    data-tooltip-horizontal-offset="0"
+        <div class="mdc-list-divider" role="separator"></div>
+        <div>
+            <ul class="mdc-list" id="class-list" role="listbox">
+            </ul>
+            <button
+                class="mdc-button"
+                id="add-class"
+            >
+                <div class="mdc-button__ripple"></div>
+                <i
+                    class="material-icons mdc-button__icon"
+                    aria-hidden="true"
+                    >add</i
                 >
-                    check_circle
-                </span>
-                <span class="mdc-list-item__text" tabindex="0">
-                    <span class="mdc-list-item__primary-text">
-                        Aditya Balasubramanian
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here 10:02 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons red"
-                    jscontroller="VXdfxd"
-                    jsaction="mouseenter:tfO1Yc; mouseleave:JywGue;"
-                    tabindex="0"
-                    aria-label="Absent"
-                    data-tooltip="Absent"
-                    data-tooltip-vertical-offset="-12"
-                    data-tooltip-horizontal-offset="0"
-                >
-                    cancel
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Tyler Lin
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Not here
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons yellow"
-                    jscontroller="VXdfxd"
-                    jsaction="mouseenter:tfO1Yc; mouseleave:JywGue;"
-                    tabindex="0"
-                    aria-label="Previously Present"
-                    data-tooltip="Previously Present"
-                    data-tooltip-vertical-offset="-12"
-                    data-tooltip-horizontal-offset="0"
-                >
-                    watch_later
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Krishna
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Last seen: 10:00 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons gray"
-                    jscontroller="VXdfxd"
-                    jsaction="mouseenter:tfO1Yc; mouseleave:JywGue;"
-                    tabindex="0"
-                    aria-label="Unlisted"
-                    data-tooltip="Unlisted"
-                    data-tooltip-vertical-offset="-12"
-                    data-tooltip-horizontal-offset="0"
-                >
-                    error
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Xiao
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here: 10:05 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons green"
-                    data-md-tooltip="Present Now"
-                >
-                    check_circle
-                </span>
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Aditya Balasubramanian
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here 10:02 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons red"
-                >
-                    cancel
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Tyler Lin
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Not here
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons yellow"
-                >
-                    watch_later
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Krishna
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Last seen: 10:00 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons gray"
-                >
-                    error
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Xiao
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here: 10:05 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons green"
-                    data-md-tooltip="Present Now"
-                >
-                    check_circle
-                </span>
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Aditya Balasubramanian
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here 10:02 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons red"
-                >
-                    cancel
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Tyler Lin
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Not here
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons yellow"
-                >
-                    watch_later
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Krishna
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Last seen: 10:00 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons gray"
-                >
-                    error
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Xiao
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here: 10:05 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons green"
-                    data-md-tooltip="Present Now"
-                >
-                    check_circle
-                </span>
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Aditya Balasubramanian
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here 10:02 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons red"
-                >
-                    cancel
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Tyler Lin
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Not here
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons yellow"
-                >
-                    watch_later
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Krishna
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Last seen: 10:00 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-
-            <li class="mdc-list-item mdc-ripple-surface" tabindex="0">
-                <span
-                    class="mdc-list-item__graphic material-icons gray"
-                >
-                    error
-                </span>
-
-                <span class="mdc-list-item__text">
-                    <span class="mdc-list-item__primary-text">
-                        Xiao
-                    </span>
-                    <span class="mdc-list-item__secondary-text">
-                        Here: 10:05 PM
-                    </span>
-                </span>
-            </li>
-            <li class="mdc-list-divider" role="separator"></li>
-        </ul>
-    </div>
-    <div class="mdc-list-divider" role="separator"></div>
-    <div class="mdc-card__actions">
-        <button class="mdc-button mdc-ripple-surface mdc-button--raised mdc-card__action mdc-card__action--button" id="export">
-            <div class="mdc-button__ripple"></div>
-            <span class="mdc-button__label">Export</span>
-        </button>
-        <div role="progressbar" class="mdc-linear-progress" aria-label="Export progress" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
+                <span class="mdc-button__label">Add Class</span>
+            </button>
+        </div>
+        <div role="progressbar" class="mdc-linear-progress" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
             <div class="mdc-linear-progress__buffer">
                 <div class="mdc-linear-progress__buffer-bar"></div>
                 <div class="mdc-linear-progress__buffer-dots"></div>
@@ -643,6 +473,194 @@ const cardHTML = `<div class="mdc-card" id="card" style="
             <div class="mdc-linear-progress__bar mdc-linear-progress__secondary-bar">
                 <span class="mdc-linear-progress__bar-inner"></span>
             </div>
+        </div>
+        <div class="mdc-card__actions">
+            <button class="mdc-button mdc-button--raised mdc-card__action mdc-card__action--button export-button" disabled>
+                <div class="mdc-button__ripple"></div>
+                <span class="mdc-button__label">Export</span>
+            </button>        
+        </div>
+    </div>
+    <div id="card-default-view">
+        <div class="mdc-card-header">
+            <div class="mdc-menu-surface--anchor right" style="right: 40px;">
+                <div class="mdc-menu mdc-menu-surface" role="menu">
+                    <ul class="mdc-list mdc-list--dense" id="sort-options">
+                        <li
+                            class="mdc-list-item mdc-ripple-surface"
+                            role="menuitem"
+                            tabindex="0"
+                        >
+                            <span class="mdc-list-item__text"
+                                >Sort by Last Name (A - Z)</span
+                            >
+                        </li>
+                        <li
+                            class="mdc-list-item mdc-ripple-surface"
+                            role="menuitem"
+                            tabindex="0"
+                        >
+                            <span class="mdc-list-item__text"
+                                >Sort by Absences</span
+                            >
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <button
+                class="mdc-icon-button medium-button material-icons left" id="default-back"
+                aria-label="Change class"
+            >
+                arrow_back
+            </button>
+            <div>
+                <h2 class="CkXZgc" id="card-title">
+                    View Class
+                </h2>
+            </div>
+            <button
+                class="mdc-icon-button medium-button material-icons right more"
+                style="right: 32px;"
+                aria-label="View sort options"
+            >
+                settings
+            </button>
+            <button
+                class="mdc-icon-button medium-button material-icons right close-card"
+                aria-label="Exit attendance dialog"
+            >
+                close
+            </button>
+        </div>
+        <div class="mdc-list-divider" role="separator"></div>
+        <div>
+            <div style="text-align: center;">
+                <button class="mdc-button" id="edit-roster">
+                    <div class="mdc-button__ripple"></div>
+                    <i class="material-icons mdc-button__icon" aria-hidden="true"
+                    >edit</i
+                    >
+                    <span class="mdc-button__label">Edit Class</span>
+                </button>
+            </div>
+            <div class="mdc-list-divider" role="separator"></div>
+            <div class="mdc-card-content" style="
+            max-height: 50vh; overflow: auto;">
+                <ul class="mdc-list mdc-list--dense mdc-list--two-line" id="roster-status">
+                </ul>
+            </div>
+        </div>
+        <div role="progressbar" class="mdc-linear-progress" id="progress-bar" aria-label="Export progress" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
+            <div class="mdc-linear-progress__buffer">
+                <div class="mdc-linear-progress__buffer-bar"></div>
+                <div class="mdc-linear-progress__buffer-dots"></div>
+            </div>
+            <div class="mdc-linear-progress__bar mdc-linear-progress__primary-bar">
+                <span class="mdc-linear-progress__bar-inner"></span>
+            </div>
+            <div class="mdc-linear-progress__bar mdc-linear-progress__secondary-bar">
+                <span class="mdc-linear-progress__bar-inner"></span>
+            </div>
+        </div>
+        <div class="mdc-card__actions">
+            <button class="mdc-button mdc-button--raised mdc-card__action mdc-card__action--button export-button" id="export">
+                <div class="mdc-button__ripple"></div>
+                <span class="mdc-button__label">Export</span>
+            </button>        
+        </div>
+    </div>
+    <div hidden id="card-edit-view">
+        <div class="mdc-card-header">
+            <button
+                class="mdc-icon-button medium-button material-icons left" id="edit-back"
+                aria-label="Cancel edit"
+            >
+                arrow_back
+            </button>
+            <div>
+                <h2 class="CkXZgc" id="card-title">
+                    Add/Edit Class
+                </h2>
+            </div>
+            <button
+                class="mdc-icon-button medium-button material-icons right close-card"
+                aria-label="Exit attendance dialog"
+            >
+                close
+            </button>
+        </div>
+        <div class="mdc-list-divider" role="separator"></div>
+        <div>
+            <div style="text-align: center;">
+                <button class="mdc-button confirm-roster" id="save-class">
+                    <div class="mdc-button__ripple"></div>
+                    <i class="material-icons mdc-button__icon" aria-hidden="true"
+                    >assignment_turned_in</i
+                    >
+                    <span class="mdc-button__label">Save</span>
+                </button>
+            </div>
+            <div class="mdc-list-divider" role="separator"></div>
+            <div class="mdc-card-content" style="
+            max-height: 50vh; overflow: auto;">
+                <div class="label CkXZgc" style="margin-top: 8px;">Class Name</div>
+                <label class="class-name-field mdc-text-field mdc-text-field--outlined">
+                    <input type="text" class="mdc-text-field__input" 
+                    aria-controls="class-helper-id"
+                    aria-describedby="class--helper-id">
+                    <span class="mdc-notched-outline">
+                        <span class="mdc-notched-outline__leading"></span>
+                        <span class="mdc-notched-outline__trailing"></span>
+                    </span>
+                </label>
+                <div class="label CkXZgc">Student Names</div>
+                <label
+                    class="mdc-text-field mdc-text-field--outlined mdc-text-field--textarea mdc-text-field--no-label"
+                >
+                    <div
+                        class="mdc-chip-set mdc-chip-set--input"
+                        role="grid"
+                    >
+                    </div>
+                    <textarea
+                        class="mdc-text-field__input"
+                        rows="6"
+                        cols="100"
+                        aria-label="Label"
+                    ></textarea>
+                    <span class="mdc-notched-outline">
+                        <span
+                            class="mdc-notched-outline__leading"
+                        ></span>
+                        <span class="mdc-notched-outline__notch">
+                        </span>
+                        <span
+                            class="mdc-notched-outline__trailing"
+                        ></span>
+                    </span>
+                </label>
+                <div class="mdc-text-field-helper-line" style="margin-bottom: 8px;">
+                    <div class="mdc-text-field-helper-text" aria-hidden="true">Ex: Tony Vlachos, Natalie Anderson, Michele Fitzgerald</div>
+                </div>
+            </div>
+        </div>
+        <div role="progressbar" class="mdc-linear-progress" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
+            <div class="mdc-linear-progress__buffer">
+                <div class="mdc-linear-progress__buffer-bar"></div>
+                <div class="mdc-linear-progress__buffer-dots"></div>
+            </div>
+            <div class="mdc-linear-progress__bar mdc-linear-progress__primary-bar">
+                <span class="mdc-linear-progress__bar-inner"></span>
+            </div>
+            <div class="mdc-linear-progress__bar mdc-linear-progress__secondary-bar">
+                <span class="mdc-linear-progress__bar-inner"></span>
+            </div>
+        </div>
+        <div class="mdc-card__actions">
+            <button class="mdc-button mdc-button--raised mdc-card__action mdc-card__action--button export-button" disabled>
+                <div class="mdc-button__ripple"></div>
+                <span class="mdc-button__label">Export</span>
+            </button>        
         </div>
     </div>
 </div>`
@@ -657,149 +675,120 @@ const selectDialogHTML = `<div class="mdc-dialog" id="select">
             aria-describedby="dialog-content"
         >
             <div>
-                <h2 class="mdc-dialog__title" id="dialog-title">
-                    Select class
+                <h2 class="mdc-dialog__title CkXZgc" id="dialog-title">
+                    Select Class
                 </h2>
-                <button class="mdc-icon-button material-icons dialog-button right">
+                <button class="mdc-icon-button material-icons big-button right">
                     help_outline
                 </button>
             </div>
-            <div class="mdc-dialog__content" id="dialog-content">
-                <ul class="mdc-list" id="class-list" role="listbox">
-                    <li
-                        class="mdc-list-item mdc-ripple-surface"
-                        role="option"
-                        tabindex="0"
+            <div class="mdc-list-divider" role="separator"></div>
+            <div id="dialog-default-view">
+                <div class="mdc-dialog__content" id="dialog-content">
+                    <ul class="mdc-list" id="class-list" role="listbox">
+                    </ul>
+                    <button
+                        class="mdc-button"
+                        id="add-class"
                     >
-                        <span class="mdc-list-item__ripple"></span>
-                        <span
-                            class="mdc-list-item__graphic material-icons"
+                        <div class="mdc-button__ripple"></div>
+                        <i
+                            class="material-icons mdc-button__icon"
+                            aria-hidden="true"
+                            >add</i
                         >
-                            perm_identity
-                        </span>
-                        <span class="mdc-list-item__text">
-                            Period 1
-                        </span>
-                        <div class="mdc-list-item__meta">
-                            <div class="mdc-menu-surface--anchor">
-                                <div
-                                    class="mdc-menu mdc-menu-surface"
-                                    role="menu"
-                                >
-                                    <ul class="mdc-list">
-                                        <li
-                                            class="mdc-list-item mdc-ripple-surface"
-                                            role="menuitem"
-                                        >
-                                            <span
-                                                class="mdc-list-item__text"
-                                                >Edit</span
-                                            >
-                                        </li>
-                                        <li
-                                            class="mdc-list-item mdc-ripple-surface"
-                                            role="menuitem"
-                                        >
-                                            <span
-                                                class="mdc-list-item__text"
-                                                >Delete</span
-                                            >
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <button
-                                class="mdc-icon-button material-icons more"
-                                aria-haspopup="menu"
-                                aria-label="Select class options"
-                            >
-                                more_vert
-                            </button>
-                        </div>
-                    </li>
-                    <li
-                        class="mdc-list-item mdc-ripple-surface"
-                        role="option"
+                        <span class="mdc-button__label">Add Class</span>
+                    </button>
+                </div>
+                <div class="mdc-list-divider" role="separator"></div>
+                <div class="mdc-dialog__actions">
+                    <button
+                        type="button"
+                        class="mdc-button mdc-button--outlined mdc-dialog__button"
+                        id="later"
+                        data-mdc-dialog-action="close"
                     >
-                        <span class="mdc-list-item__ripple"></span>
-                        <span
-                            class="mdc-list-item__graphic material-icons"
-                        >
-                            perm_identity
-                        </span>
-                        <span class="mdc-list-item__text">
-                            Period 2
-                        </span>
-                        <div class="mdc-list-item__meta">
-                            <div class="mdc-menu-surface--anchor">
-                                <div
-                                    class="mdc-menu mdc-menu-surface"
-                                    role="menu"
-                                >
-                                    <ul class="mdc-list">
-                                        <li
-                                            class="mdc-list-item mdc-ripple-surface"
-                                            role="menuitem"
-                                        >
-                                            <span
-                                                class="mdc-list-item__text"
-                                                >Edit</span
-                                            >
-                                        </li>
-                                        <li
-                                            class="mdc-list-item mdc-ripple-surface"
-                                            role="menuitem"
-                                        >
-                                            <span
-                                                class="mdc-list-item__text"
-                                                >Delete</span
-                                            >
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <button
-                                class="mdc-icon-button material-icons more"
-                                aria-haspopup="menu"
-                                aria-label="Select class options"
-                            >
-                                more_vert
-                            </button>
-                        </div>
-                    </li>
-                </ul>
-                <button
-                    class="mdc-button mdc-ripple-surface"
-                    id="add-class"
-                >
-                    <div class="mdc-button__ripple"></div>
-                    <i
-                        class="material-icons mdc-button__icon"
-                        aria-hidden="true"
-                        >add</i
+                        <div class="mdc-button__ripple"></div>
+                        <span class="mdc-button__label">Later</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="mdc-button mdc-button--raised mdc-dialog__button"
+                        id="select-button"
+                        data-mdc-dialog-action="accept"
+                        data-mdc-dialog-button-default
+                        disabled
                     >
-                    <span class="mdc-button__label">Add Class</span>
-                </button>
+                        <div class="mdc-button__ripple"></div>
+                        <span class="mdc-button__label">Select</span>
+                    </button>
+                </div>
             </div>
-            <div class="mdc-dialog__actions">
-                <button
-                    type="button"
-                    class="mdc-button mdc-button--outlined mdc-dialog__button"
-                    data-mdc-dialog-action="close"
-                >
-                    <div class="mdc-button__ripple"></div>
-                    <span class="mdc-button__label">Later</span>
-                </button>
-                <button
-                    type="button"
-                    class="mdc-button mdc-button--outlined mdc-dialog__button"
-                    id="select-button"
-                    data-mdc-dialog-action="accept"
-                    disabled
-                >
-                    <div class="mdc-button__ripple"></div>
-                    <span class="mdc-button__label">Select</span>
-                </button>
+            <div id="dialog-edit-view" hidden>
+                <div class="mdc-dialog__content" id="dialog-content">
+                    <div class="label CkXZgc" style="margin-top: 16px;">Class Name</div>
+                    <label class="class-name-field mdc-text-field mdc-text-field--outlined">
+                        <input type="text" class="mdc-text-field__input" 
+                        aria-controls="class-helper-id"
+                        aria-describedby="class--helper-id">
+                        <span class="mdc-notched-outline">
+                            <span class="mdc-notched-outline__leading"></span>
+                            <span class="mdc-notched-outline__trailing"></span>
+                        </span>
+                    </label>
+                    <div class="mdc-text-field-helper-line">
+                        <div class="mdc-text-field-helper-text" id="class-helper-id" aria-hidden="true">Ex: Period 1 Math</div>
+                    </div>
+                    <div class="label CkXZgc">Student Names</div>
+                    <label
+                        class="mdc-text-field mdc-text-field--outlined mdc-text-field--textarea mdc-text-field--no-label"
+                    >
+                        <div
+                            class="mdc-chip-set mdc-chip-set--input"
+                            role="grid"
+                        >
+                        </div>
+                        <textarea
+                            class="mdc-text-field__input"
+                            rows="6"
+                            cols="100"
+                            aria-label="Enter Student Names"
+                        ></textarea>
+                        <span class="mdc-notched-outline">
+                            <span
+                                class="mdc-notched-outline__leading"
+                            ></span>
+                            <span class="mdc-notched-outline__notch">
+                            </span>
+                            <span
+                                class="mdc-notched-outline__trailing"
+                            ></span>
+                        </span>
+                    </label>
+                    <div class="mdc-text-field-helper-line" style="margin-bottom: 16px;">
+                        <div class="mdc-text-field-helper-text" aria-hidden="true">Ex: Tony Vlachos, Natalie Anderson, Michele Fitzgerald</div>
+                    </div>
+                </div>
+                <div class="mdc-list-divider" role="separator"></div>
+                <div class="mdc-dialog__actions">
+                    <button
+                        type="button"
+                        class="mdc-button mdc-button--outlined mdc-dialog__button"
+                        id="cancel-class"
+                    >
+                        <div class="mdc-button__ripple"></div>
+                        <span class="mdc-button__label">Cancel</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="mdc-button mdc-button--raised mdc-dialog__button"
+                        id="save-class"
+                        data-mdc-dialog-button-default
+                    >
+                        <div class="mdc-button__ripple"></div>
+                        <span class="mdc-button__label">Save</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -833,10 +822,17 @@ const snackbarHTML = `<div class="mdc-snackbar">
         An error occurred. Please try again later.
     </div>
     <div class="mdc-snackbar__actions">
-        <button type="button" class="mdc-button mdc-snackbar__action" id="retry">
+        <button type="button" class="mdc-button mdc-snackbar__action">
         <div class="mdc-button__ripple"></div>
-        <span class="mdc-button__label">Retry</span>
+        <span class="mdc-button__label">OK</span>
         </button>
     </div>
     </div>
 </div>`
+
+function toTimeString(timestamp) {
+    return new Intl.DateTimeFormat(undefined, {
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timeStyle: 'short',
+    }).format(new Date(timestamp * 1000))
+}

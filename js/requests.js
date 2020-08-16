@@ -510,9 +510,10 @@ function createGroupRequest(token, className, code, spreadsheetId, sheetId) {
 
 function generateAttendanceRows(code) {
     return new Promise((resolve) => {
-        chrome.storage.local.get(code, function (result) {
+        chrome.storage.local.get(null, function (result) {
             const startUnix = result[code]['start-timestamp']
             const unix = ~~(Date.now() / 1000)
+            const roster = result.rosters[result[code].class]
             const rawData = result[code].attendance
 
             const dts = dateTimeString(startUnix, unix)
@@ -559,7 +560,7 @@ function generateAttendanceRows(code) {
                 },
             ]
 
-            let names = Object.keys(rawData)
+            let names = Array.from(roster)
             names.sort(compare)
             for (const name of names) {
                 const splitName = name.split(' ')
@@ -571,23 +572,25 @@ function generateAttendanceRows(code) {
                     joins = 0,
                     minsPresent = 0
                 const timestamps = rawData[name]
-                const l = timestamps.length
-                if (l > 0) {
-                    present = 'Y'
-                    timeIn = toTimeString(timestamps[0])
-                    if ((l - 1) % 2 === 1) {
-                        timeOut = toTimeString(timestamps[l - 1])
-                    }
-                    joins = Math.ceil(l / 2)
-                    for (let i = 0; i < l; i += 2) {
-                        let secs
-                        if (i + 1 === l) {
-                            secs = unix - timestamps[i]
-                        } else {
-                            secs = timestamps[i + 1] - timestamps[i]
+                if (timestamps) {
+                    const l = timestamps.length
+                    if (l > 0) {
+                        present = 'Y'
+                        timeIn = toTimeString(timestamps[0])
+                        if ((l - 1) % 2 === 1) {
+                            timeOut = toTimeString(timestamps[l - 1])
                         }
-                        const mins = Math.round(secs / 6) / 10
-                        minsPresent += mins
+                        joins = Math.ceil(l / 2)
+                        for (let i = 0; i < l; i += 2) {
+                            let secs
+                            if (i + 1 === l) {
+                                secs = unix - timestamps[i]
+                            } else {
+                                secs = timestamps[i + 1] - timestamps[i]
+                            }
+                            const mins = Math.round(secs / 6) / 10
+                            minsPresent += mins
+                        }
                     }
                 }
                 rowData.push({
@@ -776,6 +779,7 @@ function getMetaByKey(key, token, spreadsheetId) {
                 if (response.ok || response.status === 404) {
                     return response.json()
                 }
+                console.log(response)
                 throw new Error('An error occurred while accessing the spreadsheet. Please try again later.')
             })
             .then(function (data) {
@@ -811,6 +815,7 @@ function getNumSheets(token, spreadsheetId) {
                 if (response.ok) {
                     return response.json()
                 }
+                console.log(response)
                 throw new Error('An error occurred while accessing the spreadsheet. Please try again later.')
             })
             .then(function (data) {
@@ -849,6 +854,7 @@ function batchUpdate(token, requests, spreadsheetId, sheetId) {
                 if (response.ok) {
                     return response.json()
                 }
+                console.log(response)
                 throw new Error('An error occurred while updating the spreadsheet. Please try again later.')
             })
             .then(function (data) {

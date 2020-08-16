@@ -9,7 +9,9 @@
   ],
   "background": {
     "scripts": [
-      "js/background.js"
+      "js/background.js",
+      "js/requests.js",
+      "js/utils.js"
     ],
     "persistent": false
   },

@@ -1,4 +1,4 @@
 .prettierrc
-# icons/*
-# css/material-components.min.css
-# js/material-components.min.js
+icons/*
+css/material-components.min.css
+js/material-components.min.js

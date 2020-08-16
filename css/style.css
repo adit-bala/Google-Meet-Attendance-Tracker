@@ -46,12 +46,17 @@
     text-align: center;
 }
 
+#card-title {
+    text-align: center;
+    margin: 12px;
+    font-size: 20px;
+}
+
 .left {
     position: absolute;
     top: 0px;
     left: 0px;
     padding: 0px;
-    margin: 8px 0 0 8px;
     z-index: 1;
 }
 
@@ -60,7 +65,17 @@
     top: 0px;
     right: 0px;
     padding: 0px;
-    margin: 8px 8px 0 0;
+}
+
+.dialog-button {
+    margin: 8px 8px 0 8px;
+}
+
+.card-button {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    margin: 8px 10px 0 10px;
 }
 
 .material-icons.green {
@@ -83,12 +98,16 @@
     padding: 0px;
 }
 
+.mdc-list {
+    padding: 0px;
+}
+
 .mdc-list-item {
     padding-right: 8px;
 }
 
 #class-list {
-    padding-bottom: 0
+    padding-bottom: 0;
 }
 
 #add-class {
@@ -109,4 +128,8 @@
 
 .mdc-list-item__graphic {
     margin-right: 16px;
+}
+
+.mdc-linear-progress {
+    width: 80%;
 }

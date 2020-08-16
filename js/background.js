@@ -6,27 +6,32 @@ chrome.runtime.onMessage.addListener(function (message, callback) {
     }
 })
 
-chrome.runtime.onMessage.addListener(function (message, callback) {
-    if (message.data == 'export') {
-        const code = message.code
-        chrome.identity.getAuthToken({ interactive: true }, function (token) {
-            chrome.storage.local.get(['spreadsheet-id', code], function (
-                result
+chrome.runtime.onConnect.addListener(function (port) {
+    port.onMessage.addListener(function (msg) {
+        if (msg.data == 'export') {
+            const code = msg.code
+            chrome.identity.getAuthToken({ interactive: true }, function (
+                token
             ) {
-                const id = result['spreadsheet-id']
-                const className = result[code].class
-                console.log('Meet code: ' + code)
-                if (id == undefined) {
-                    createSpreadsheet(token, className, code)
-                } else {
-                    updateSpreadsheet(token, className, code, id)
-                }
+                chrome.storage.local.get(['spreadsheet-id', code], function (
+                    result
+                ) {
+                    const id = result['spreadsheet-id']
+                    const className = result[code].class
+                    console.log('Meet code: ' + code)
+                    if (id == undefined) {
+                        createSpreadsheet(port, token, className, code)
+                    } else {
+                        updateSpreadsheet(port, token, className, code, id)
+                    }
+                    port.postMessage({ progress: 0 })
+                })
             })
-        })
-    }
+        }
+    })
 })
 
-function createSpreadsheet(token, className, code) {
+function createSpreadsheet(port, token, className, code) {
     const body = {
         properties: {
             title: 'Attendance for Google Meet',
@@ -48,6 +53,7 @@ function createSpreadsheet(token, className, code) {
     fetch('https://sheets.googleapis.com/v4/spreadsheets', init)
         .then((response) => response.json())
         .then(function (data) {
+            port.postMessage({ progress: 0.3 })
             console.log(
                 `Successfully created Attendance spreadsheet with id ${data.spreadsheetId}.`
             )
@@ -61,16 +67,21 @@ function createSpreadsheet(token, className, code) {
             return createInitializeCellsRequest(code, 0)
         })
         .then(function (reqs) {
+            port.postMessage({ progress: 0.6 })
             requests = requests.concat(reqs)
-            return batchUpdate(token, requests, spreadsheetId)
+            return batchUpdate(token, requests, spreadsheetId, 0)
         })
         .then(function (data) {
+            port.postMessage({ done: true, progress: 1 })
             console.log('Initialize spreadsheet response:')
             console.log(data)
         })
+        .catch(function (error) {
+            port.postMessage({ done: true, error: error.message, progress: 0 })
+        })
 }
 
-async function updateSpreadsheet(token, className, code, spreadsheetId) {
+async function updateSpreadsheet(port, token, className, code, spreadsheetId) {
     let requests = []
     let sheetId = null,
         startRow = null,
@@ -78,6 +89,7 @@ async function updateSpreadsheet(token, className, code, spreadsheetId) {
     console.log('Updating spreadsheet...')
     getMetaByKey(className, token, spreadsheetId)
         .then(async function (meta) {
+            port.postMessage({ progress: 0.15 })
             if (meta == null) {
                 const numSheets = await getNumSheets(token, spreadsheetId)
                 sheetId = numSheets
@@ -95,6 +107,7 @@ async function updateSpreadsheet(token, className, code, spreadsheetId) {
             }
         })
         .then(function (meta) {
+            port.postMessage({ progress: 0.3 })
             if (meta == null) {
                 startRow = 1
                 return createInitializeCellsRequest(code, sheetId)
@@ -104,10 +117,12 @@ async function updateSpreadsheet(token, className, code, spreadsheetId) {
             return createUpdateCellsRequest(code, sheetId, startRow)
         })
         .then(function (reqs) {
+            port.postMessage({ progress: 0.4 })
             requests = requests.concat(reqs)
             return batchUpdate(token, requests, spreadsheetId)
         })
         .then(function (data) {
+            port.postMessage({ progress: 0.65 })
             console.log('Update spreadsheet response:')
             console.log(data)
             return createGroupRequest(
@@ -119,11 +134,16 @@ async function updateSpreadsheet(token, className, code, spreadsheetId) {
             )
         })
         .then(function (reqs) {
+            port.postMessage({ progress: 0.75 })
             requests = reqs
-            return batchUpdate(token, requests, spreadsheetId)
+            return batchUpdate(token, requests, spreadsheetId, sheetId)
         })
         .then(function (data) {
+            port.postMessage({ done: true, progress: 1 })
             console.log('Update metadata and groups response:')
             console.log(data)
+        })
+        .catch(function (error) {
+            port.postMessage({ done: true, error: error.message, progress: 0 })
         })
 }

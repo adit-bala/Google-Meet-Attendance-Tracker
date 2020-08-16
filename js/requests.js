@@ -757,7 +757,7 @@ function getSpreadsheetTheme() {
 }
 
 function getMetaByKey(key, token, spreadsheetId) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const init = {
             method: 'GET',
             async: true,
@@ -772,7 +772,12 @@ function getMetaByKey(key, token, spreadsheetId) {
             )}`,
             init
         )
-            .then((response) => response.json())
+            .then(function (response) {
+                if (response.ok || response.status === 404) {
+                    return response.json()
+                }
+                throw new Error('An error occurred while accessing the spreadsheet. Please try again later.')
+            })
             .then(function (data) {
                 console.log(`Get metadata for key ${key} response:`)
                 console.log(data)
@@ -781,12 +786,15 @@ function getMetaByKey(key, token, spreadsheetId) {
                 }
                 resolve(data)
             })
+            .catch(function (error) {
+                reject(error)
+            })
     })
 }
 
 function getNumSheets(token, spreadsheetId) {
     console.log(`Getting index of new sheet...`)
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const init = {
             method: 'GET',
             async: true,
@@ -799,18 +807,26 @@ function getNumSheets(token, spreadsheetId) {
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
             init
         )
-            .then((response) => response.json())
+            .then(function (response) {
+                if (response.ok) {
+                    return response.json()
+                }
+                throw new Error('An error occurred while accessing the spreadsheet. Please try again later.')
+            })
             .then(function (data) {
                 resolve(data.sheets.length)
+            })
+            .catch(function (error) {
+                reject(error)
             })
     })
 }
 
-function batchUpdate(token, requests, spreadsheetId) {
+function batchUpdate(token, requests, spreadsheetId, sheetId) {
     requests.push(createResizeRequest(sheetId))
     console.log('Executing batch update...')
     console.log(requests)
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const body = {
             requests: requests,
             includeSpreadsheetInResponse: true,
@@ -828,9 +844,18 @@ function batchUpdate(token, requests, spreadsheetId) {
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
             init
         )
-            .then((response) => response.json())
+            .then(function (response) {
+                //console.log(response)
+                if (response.ok) {
+                    return response.json()
+                }
+                throw new Error('An error occurred while updating the spreadsheet. Please try again later.')
+            })
             .then(function (data) {
                 resolve(data)
+            })
+            .catch(function (error) {
+                reject(error)
             })
     })
 }

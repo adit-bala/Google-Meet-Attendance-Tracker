@@ -7,7 +7,7 @@ Our Google Chrome extension, Attendance for Google Meet, streamlines the entire 
 
 To use:
 
-1) Clone this Github Repo to your local computer.
+1) Clone this Github Repo to your local computer
 2) Go to chrome://extensions/
 3) Turn on *developer mode* in the top right
 4) Click on *Load Unpacked* and select the Github Project from your directory

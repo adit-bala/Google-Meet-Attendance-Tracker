@@ -1,6 +1,6 @@
 # Attendance tracker for Google Meet 
 
-## This project is not the final version, go to (~) for the latest release.
+## This project is not the final version, go to (https://github.com/tytot/attendance-for-google-meet) for the latest release.
 
 In the era of COVID-19, virtual classes have become the norm. For teachers, however, taking attendance in these virtual classes is often a pain. They must keep track of when students join and leave among side conversations and distracting visuals. Many teachers at our school complain about the difficulty of taking virtual attendance, claiming that existing Google Chrome extensions are buggy and unreliable.
 
